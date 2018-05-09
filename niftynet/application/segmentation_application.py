@@ -330,7 +330,11 @@ class SegmentationApplication(BaseApplication):
                 loss = data_loss + reg_loss
             else:
                 loss = data_loss
-            grads = self.optimiser.compute_gradients(loss)
+
+            var_list = tf.global_variables()
+            to_optimise = [x for x in var_list if x.name.startswith('HighRes3DNet/conv')]
+            grads = self.optimiser.compute_gradients(loss, var_list=to_optimise)
+
             # collecting gradients variables
             gradients_collector.add_to_collection([grads])
             # collecting output variables
