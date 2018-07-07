@@ -351,7 +351,17 @@ class ApplicationDriver(object):
 
             with tf.name_scope('MergedOutputs'):
                 self.outputs_collector.finalise_output_op()
+
             # saving operation
+            var_list = tf.global_variables()
+            # list of variables to restore from the trained model
+            to_restore = [x for x in var_list if not x.name.startswith('HighRes3DNet/conv')]
+            # list of variables to randomly initialise
+            to_randomise = [x for x in var_list if x not in to_restore]
+            self.restorer = tf.train.Saver(var_list=to_restore)
+            # initialise HighRes3DNet/conv variables
+            self._init_op = tf.variables_initializer(to_randomise)
+
             self.saver = tf.train.Saver(max_to_keep=self.max_checkpoints,
                                         save_relative_paths=True)
 
@@ -399,7 +409,8 @@ class ApplicationDriver(object):
         # restore session
         tf.logging.info('Accessing %s ...', checkpoint)
         try:
-            self.saver.restore(sess, checkpoint)
+            self.restorer.restore(sess, checkpoint)
+            sess.run(self._init_op)
         except tf.errors.NotFoundError:
             tf.logging.fatal(
                 'checkpoint %s not found or variables to restore do not '
